@@ -17,7 +17,10 @@
       }
     },
     "scheme": "savr",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "plugins": [
       "expo-router",
       [
@@ -26,7 +29,8 @@
           "backgroundColor": "#0a0a0a",
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
