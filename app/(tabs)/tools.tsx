@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { DoneToolbar, KEYBOARD_DONE_ID } from '../../src/components/ui/DoneToolbar';
 import { calcSeries, calcTotals } from '../../src/engine/calculators';
 import { fmtCurrency, fmtCompact } from '../../src/engine/planner';
 import { Card } from '../../src/components/ui/Card';
@@ -55,6 +56,7 @@ function YearsInput({ value, onChange }: { value: number; onChange: (n: number) 
           placeholder="25"
           placeholderTextColor={COLORS.textDim}
           keyboardType="number-pad"
+          inputAccessoryViewID={KEYBOARD_DONE_ID}
           style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.base }}
         />
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>yrs</Text>
@@ -95,6 +97,7 @@ export default function ToolsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <DoneToolbar />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -118,6 +121,7 @@ export default function ToolsScreen() {
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl + SPACING.lg }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
         >
           {/* Inputs */}

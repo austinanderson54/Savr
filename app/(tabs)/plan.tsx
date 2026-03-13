@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { DoneToolbar, KEYBOARD_DONE_ID } from '../../src/components/ui/DoneToolbar';
 import useStore, { DebtItem } from '../../src/stores/store';
 import useBudgetStore from '../../src/stores/budgetStore';
 import useProgressStore from '../../src/stores/progressStore';
@@ -58,6 +59,8 @@ function DebtRow({ debt, idx, onUpdate, onRemove }: {
           onBlur={() => onUpdate({ name: nameText })}
           placeholder="Card name"
           placeholderTextColor={COLORS.textDim}
+          returnKeyType="done"
+          inputAccessoryViewID={KEYBOARD_DONE_ID}
           style={{
             flex: 1,
             backgroundColor: COLORS.inputBg,
@@ -106,6 +109,7 @@ function DebtRow({ debt, idx, onUpdate, onRemove }: {
               placeholder="0"
               placeholderTextColor={COLORS.textDim}
               keyboardType="decimal-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_ID}
               style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.sm }}
             />
           </View>
@@ -136,6 +140,7 @@ function DebtRow({ debt, idx, onUpdate, onRemove }: {
               placeholder="0"
               placeholderTextColor={COLORS.textDim}
               keyboardType="decimal-pad"
+              inputAccessoryViewID={KEYBOARD_DONE_ID}
               style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.sm }}
             />
             <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>%</Text>
@@ -260,6 +265,7 @@ export default function PlanScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <DoneToolbar />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -281,6 +287,7 @@ export default function PlanScreen() {
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl + SPACING.lg }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
         >
           {/* Emergency Fund Card */}
