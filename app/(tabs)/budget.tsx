@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useBudgetStore, { PAY_FREQS, PAY_FREQ_LABELS, PayFrequency, Expense } from '../../src/stores/budgetStore';
@@ -134,6 +135,7 @@ function ExpenseRow({ expense, onUpdate, onRemove }: {
 }
 
 export default function BudgetScreen() {
+  const router = useRouter();
   const {
     payFrequency, takeHomePerPaycheck, setPayFrequency, setTakeHomePerPaycheck,
     hasSecondIncome, payFrequency2, takeHomePerPaycheck2,
@@ -160,11 +162,16 @@ export default function BudgetScreen() {
         keyboardVerticalOffset={88}
       >
         {/* Header */}
-        <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
-          <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>Budget</Text>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
-            Income − Expenses = Spare per month
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
+          <View>
+            <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>Budget</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
+              Income − Expenses = Spare per month
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: SPACING.xs, marginTop: 2 }}>
+            <Ionicons name="settings-outline" size={22} color={COLORS.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <ScrollView

@@ -6,9 +6,12 @@ import {
   SafeAreaView,
   Switch,
   TextInput,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { calcSeries, calcTotals } from '../../src/engine/calculators';
 import { fmtCurrency, fmtCompact } from '../../src/engine/planner';
 import { Card } from '../../src/components/ui/Card';
@@ -61,6 +64,7 @@ function YearsInput({ value, onChange }: { value: number; onChange: (n: number) 
 }
 
 export default function ToolsScreen() {
+  const router = useRouter();
   const [start, setStart] = useState(0);
   const [monthly, setMonthly] = useState(500);
   const [annualReturn, setAnnualReturn] = useState(10);
@@ -97,13 +101,18 @@ export default function ToolsScreen() {
         keyboardVerticalOffset={88}
       >
         {/* Header */}
-        <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
-          <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>
-            Tools
-          </Text>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
-            Compound growth — contributions, returns, and inflation
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
+          <View>
+            <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>
+              Tools
+            </Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
+              Compound growth — contributions, returns, and inflation
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: SPACING.xs, marginTop: 2 }}>
+            <Ionicons name="settings-outline" size={22} color={COLORS.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <ScrollView

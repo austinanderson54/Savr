@@ -7,30 +7,33 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, FONT_SIZE, RADIUS } from '../../src/constants/theme';
 
 const ONBOARDED_KEY = 'savr-onboarded';
 
-const steps = [
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const steps: { iconName: IoniconsName; title: string; body: string }[] = [
   {
-    icon: '📊',
+    iconName: 'compass-outline',
     title: 'One Next Action — every month',
     body: "SAVR looks at your income, expenses, debt, and emergency fund and tells you exactly where your spare money should go. No guessing.",
   },
   {
-    icon: '🔒',
+    iconName: 'shield-checkmark-outline',
     title: 'Completely private. No accounts.',
     body: 'All your data stays on your device. No login, no cloud, no bank connections. Just your numbers and the plan.',
   },
   {
-    icon: '🎯',
+    iconName: 'layers-outline',
     title: 'Order of operations built in',
     body: 'Starter emergency fund → High-APR debt → Full emergency fund → 401(k) match → Invest. SAVR sequences it for you.',
   },
   {
-    icon: '📈',
+    iconName: 'analytics-outline',
     title: 'Real math. Not generic advice.',
     body: 'SAVR simulates month-by-month payoffs, calculates real interest, and gives you actual timelines — not ballpark estimates.',
   },
@@ -93,7 +96,9 @@ export default function OnboardingScreen() {
             minHeight: 200,
           }}
         >
-          <Text style={{ fontSize: 40, marginBottom: SPACING.lg }}>{step.icon}</Text>
+          <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.pillBg, alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.lg }}>
+            <Ionicons name={step.iconName} size={28} color={COLORS.text} />
+          </View>
           <Text
             style={{
               color: COLORS.text,

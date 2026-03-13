@@ -6,6 +6,8 @@ import {
   SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useStore from '../../src/stores/store';
 import useBudgetStore from '../../src/stores/budgetStore';
@@ -134,6 +136,7 @@ function BenchmarkCard({ b, expanded, onToggle }: {
 }
 
 export default function InvestScreen() {
+  const router = useRouter();
   const { debtItems, emergencyFundCurrent, k401Acknowledged, setK401Acknowledged } = useStore();
   const { monthlyExpenses, sparePerMonth } = useBudgetStore();
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -171,11 +174,16 @@ export default function InvestScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       {/* Header */}
-      <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
-        <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>Invest</Text>
-        <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
-          Benchmarks, funds, and how to get started
-        </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
+        <View>
+          <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>Invest</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
+            Benchmarks, funds, and how to get started
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: SPACING.xs, marginTop: 2 }}>
+          <Ionicons name="settings-outline" size={22} color={COLORS.textMuted} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -189,9 +197,13 @@ export default function InvestScreen() {
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm }}>
-            <Text style={{ fontSize: 22, marginRight: SPACING.sm }}>
-              {isReady ? '🎉' : is401k ? '🎯' : '⏳'}
-            </Text>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.pillBg, alignItems: 'center', justifyContent: 'center', marginRight: SPACING.sm }}>
+              <Ionicons
+                name={isReady ? 'checkmark-circle' : is401k ? 'flag' : 'time-outline'}
+                size={20}
+                color={isReady ? COLORS.green : is401k ? COLORS.yellow : COLORS.textMuted}
+              />
+            </View>
             <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '700', flex: 1 }}>
               {isReady
                 ? 'Ready to invest'

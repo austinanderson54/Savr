@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useStore, { DebtItem } from '../../src/stores/store';
@@ -207,6 +208,7 @@ function ProgressBar({ pct }: { pct: number }) {
 
 // ---- Main Plan screen ----
 export default function PlanScreen() {
+  const router = useRouter();
   const {
     debtItems,
     updateDebt,
@@ -271,11 +273,16 @@ export default function PlanScreen() {
         keyboardVerticalOffset={88}
       >
         {/* Header */}
-        <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
-          <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>Plan</Text>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
-            Emergency Fund &amp; High-APR Debts
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
+          <View>
+            <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>EF & Debt</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 }}>
+              Emergency Fund & High-APR Debts
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: SPACING.xs, marginTop: 2 }}>
+            <Ionicons name="settings-outline" size={22} color={COLORS.textMuted} />
+          </TouchableOpacity>
         </View>
 
         <ScrollView
