@@ -216,6 +216,8 @@ export default function PlanScreen() {
     removeDebt,
     emergencyFundCurrent,
     setEmergencyFundCurrent,
+    noHighAprDebtAcknowledged,
+    setNoHighAprDebtAcknowledged,
   } = useStore();
   const { monthlyExpenses, sparePerMonth } = useBudgetStore();
   const { updateDebtPeak, debtProgressPct } = useProgressStore();
@@ -325,9 +327,45 @@ export default function PlanScreen() {
             </Text>
 
             {debtItems.length === 0 && (
-              <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.sm, marginBottom: SPACING.md, fontStyle: 'italic' }}>
-                No high-APR debts added. Good news if that's accurate — head to the Dashboard to see your plan.
-              </Text>
+              <View style={{ marginBottom: SPACING.md }}>
+                {noHighAprDebtAcknowledged ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                    <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
+                    <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, flex: 1 }}>
+                      No high-APR debt confirmed. Add a debt above if your situation changes.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.sm, marginBottom: SPACING.md, lineHeight: 18 }}>
+                      Only add debts with APR above ~10% (credit cards, store cards, high-rate loans).
+                    </Text>
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setNoHighAprDebtAcknowledged(true);
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: SPACING.sm,
+                        paddingVertical: SPACING.sm,
+                        paddingHorizontal: SPACING.md,
+                        borderRadius: RADIUS.md,
+                        borderWidth: 1,
+                        borderColor: COLORS.inputBorder,
+                        backgroundColor: COLORS.inputBg,
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.textMuted} />
+                      <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: '600' }}>
+                        No current debt above 10% APR
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             )}
 
             {debtItems.map((d, idx) => (

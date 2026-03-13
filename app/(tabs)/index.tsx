@@ -100,7 +100,7 @@ function LearnCard() {
 // ---- Main Home screen ----
 export default function HomeScreen() {
   const router = useRouter();
-  const { debtItems, emergencyFundCurrent, k401Acknowledged } = useStore();
+  const { debtItems, emergencyFundCurrent, k401Acknowledged, noHighAprDebtAcknowledged, setNoHighAprDebtAcknowledged } = useStore();
   const { monthlyIncome, monthlyExpenses, sparePerMonth } = useBudgetStore();
 
   const income = monthlyIncome();
@@ -167,6 +167,14 @@ export default function HomeScreen() {
     }
   }
 
+  // Setup checklist gate
+  const budgetDone = income > 0;
+  const efDebtDone =
+    (debtItems || []).some((d) => num(d.balance) > 0) ||
+    emergencyFundCurrent > 0 ||
+    noHighAprDebtAcknowledged;
+  const setupComplete = budgetDone && efDebtDone;
+
   // Phase → tab navigation
   const phaseNavLabel =
     phase === 'invest' ? 'Open Invest' : phase === '401k' ? 'Open Invest' : 'Open Plan';
@@ -212,39 +220,99 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl + SPACING.lg }}
         showsVerticalScrollIndicator={false}
       >
-        {income === 0 ? (
-          /* ── Empty state: user hasn't set up budget yet ── */
+        {!setupComplete ? (
+          /* ── Setup checklist: directs user before engine takes over ── */
           <>
             <Card title="Start here">
               <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 20, marginBottom: SPACING.lg }}>
-                Your dashboard and plan are generated automatically. Set up three things and everything updates in real time:
+                Complete these two steps and your dashboard updates automatically.
               </Text>
-              {[
-                { n: '1', label: 'Budget', body: 'Enter your income and monthly expenses.' },
-                { n: '2', label: 'EF & Debt', body: 'Add any debts above ~10% APR and your emergency fund balance.' },
-                { n: '3', label: 'Dashboard', body: 'Your Next Action, timelines, and snapshot appear here.' },
-              ].map(({ n, label, body }) => (
-                <View key={n} style={{ flexDirection: 'row', marginBottom: SPACING.md }}>
-                  <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: COLORS.pillBg, alignItems: 'center', justifyContent: 'center', marginRight: SPACING.sm, marginTop: 1 }}>
-                    <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xs, fontWeight: '700' }}>{n}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: '700' }}>{label}</Text>
-                    <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 18, marginTop: 2 }}>{body}</Text>
-                  </View>
+
+              {/* Step 1 — Budget */}
+              <View style={{ flexDirection: 'row' }}>
+                <View style={{
+                  width: 26, height: 26, borderRadius: 13,
+                  backgroundColor: budgetDone ? COLORS.green : COLORS.pillBg,
+                  alignItems: 'center', justifyContent: 'center',
+                  marginRight: SPACING.sm, marginTop: 2, flexShrink: 0,
+                }}>
+                  {budgetDone
+                    ? <Ionicons name="checkmark" size={15} color={COLORS.background} />
+                    : <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xs, fontWeight: '700' }}>1</Text>
+                  }
                 </View>
-              ))}
-              <Button
-                label="Open Budget →"
-                onPress={() => router.push('/(tabs)/budget' as any)}
-                style={{ marginTop: SPACING.xs }}
-              />
-              <Button
-                label="Open EF & Debt →"
-                onPress={() => router.push('/(tabs)/plan' as any)}
-                variant="outline"
-                style={{ marginTop: SPACING.sm }}
-              />
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    color: budgetDone ? COLORS.textMuted : COLORS.text,
+                    fontSize: FONT_SIZE.base,
+                    fontWeight: '700',
+                    textDecorationLine: budgetDone ? 'line-through' : 'none',
+                  }}>
+                    Budget
+                  </Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 18, marginTop: 2 }}>
+                    Enter your income and monthly expenses.
+                  </Text>
+                  {!budgetDone && (
+                    <Button
+                      label="Open Budget →"
+                      onPress={() => router.push('/(tabs)/budget' as any)}
+                      style={{ marginTop: SPACING.sm, alignSelf: 'flex-start' }}
+                    />
+                  )}
+                </View>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: COLORS.separator, marginVertical: SPACING.md, marginLeft: 34 }} />
+
+              {/* Step 2 — EF & Debt (dims until step 1 is done) */}
+              <View style={{ flexDirection: 'row', opacity: budgetDone ? 1 : 0.35 }}>
+                <View style={{
+                  width: 26, height: 26, borderRadius: 13,
+                  backgroundColor: efDebtDone ? COLORS.green : COLORS.pillBg,
+                  alignItems: 'center', justifyContent: 'center',
+                  marginRight: SPACING.sm, marginTop: 2, flexShrink: 0,
+                }}>
+                  {efDebtDone
+                    ? <Ionicons name="checkmark" size={15} color={COLORS.background} />
+                    : <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xs, fontWeight: '700' }}>2</Text>
+                  }
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    color: efDebtDone ? COLORS.textMuted : COLORS.text,
+                    fontSize: FONT_SIZE.base,
+                    fontWeight: '700',
+                    textDecorationLine: efDebtDone ? 'line-through' : 'none',
+                  }}>
+                    EF & Debt
+                  </Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 18, marginTop: 2 }}>
+                    Add any debts above ~10% APR and your emergency fund balance — or confirm you have none.
+                  </Text>
+                  {budgetDone && !efDebtDone && (
+                    <>
+                      <Button
+                        label="Open EF & Debt →"
+                        onPress={() => router.push('/(tabs)/plan' as any)}
+                        style={{ marginTop: SPACING.sm, alignSelf: 'flex-start' }}
+                      />
+                      <TouchableOpacity
+                        onPress={async () => {
+                          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setNoHighAprDebtAcknowledged(true);
+                        }}
+                        style={{ marginTop: SPACING.sm, paddingVertical: SPACING.xs }}
+                        activeOpacity={0.6}
+                      >
+                        <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, textDecorationLine: 'underline' }}>
+                          No current debt above 10% APR
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              </View>
             </Card>
             <LearnCard />
           </>

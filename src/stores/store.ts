@@ -22,6 +22,9 @@ type StoreState = {
   debtItems: DebtItem[];
   emergencyFundCurrent: number;
   k401Acknowledged: boolean;
+  // Set true when user explicitly confirms they have no high-APR debt,
+  // so the dashboard knows setup is complete even with zero debts/EF.
+  noHighAprDebtAcknowledged: boolean;
 
   activeDebtsSorted: () => DebtItem[];
   highestAprDebt: () => DebtItem | null;
@@ -32,6 +35,7 @@ type StoreState = {
   addDebt: () => void;
   removeDebt: (idx: number) => void;
   setK401Acknowledged: (v: boolean) => void;
+  setNoHighAprDebtAcknowledged: (v: boolean) => void;
   resetAll: () => void;
 };
 
@@ -39,6 +43,7 @@ const initialState = {
   debtItems: [] as DebtItem[],
   emergencyFundCurrent: 0,
   k401Acknowledged: false,
+  noHighAprDebtAcknowledged: false,
 };
 
 const useStore = create<StoreState>()(
@@ -94,6 +99,10 @@ const useStore = create<StoreState>()(
         set({ k401Acknowledged: !!v });
       },
 
+      setNoHighAprDebtAcknowledged(v) {
+        set({ noHighAprDebtAcknowledged: !!v });
+      },
+
       resetAll() {
         set({ ...initialState });
       },
@@ -109,12 +118,14 @@ const useStore = create<StoreState>()(
           ...s,
           debtItems: Array.isArray(s.debtItems) ? s.debtItems : [],
           k401Acknowledged: !!s.k401Acknowledged,
+          noHighAprDebtAcknowledged: !!s.noHighAprDebtAcknowledged,
         };
       },
       partialize: (s) => ({
         debtItems: s.debtItems,
         emergencyFundCurrent: s.emergencyFundCurrent,
         k401Acknowledged: s.k401Acknowledged,
+        noHighAprDebtAcknowledged: s.noHighAprDebtAcknowledged,
       }),
     },
   ),
