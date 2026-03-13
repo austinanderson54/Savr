@@ -235,7 +235,7 @@ export default function BudgetScreen() {
           {/* Expenses Card */}
           <Card title="Monthly Expenses">
             <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 18, marginBottom: SPACING.md }}>
-              Include all fixed monthly costs — rent, subscriptions, minimum payments for low-APR debts (&lt;10% APR), etc.
+              Include all fixed monthly costs — rent, utilities, insurance, subscriptions, and minimum payments for low-APR debts (&lt;10% APR).
             </Text>
 
             {expenses.length === 0 && (

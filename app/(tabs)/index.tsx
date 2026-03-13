@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  Share,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,9 +17,139 @@ import { computePlan, fmtCurrency, num } from '../../src/engine/planner';
 import { Card } from '../../src/components/ui/Card';
 import { MetricRow } from '../../src/components/ui/MetricRow';
 import { Button } from '../../src/components/ui/Button';
+import { SharePlanCard } from '../../src/components/share/SharePlanCard';
+import { sharePlan } from '../../src/lib/sharePlan';
 import { COLORS, SPACING, FONT_SIZE, RADIUS } from '../../src/constants/theme';
 
 const formatApr = (v: unknown) => `${num(v).toFixed(1)}%`;
+
+function fmtMonths(months: number): string {
+  if (!Number.isFinite(months) || months <= 0) return '—';
+  const m = Math.ceil(months);
+  return `~${m} ${m === 1 ? 'month' : 'months'}`;
+}
+
+// ---- Financial Stability score ----
+function computeStabilityScore({
+  monthlyCash,
+  income,
+  totalDebt,
+  efCurrent,
+  efTarget,
+  autoInterest,
+}: {
+  monthlyCash: number;
+  income: number;
+  totalDebt: number;
+  efCurrent: number;
+  efTarget: number;
+  autoInterest: number;
+}): number {
+  if (income <= 0) return 0;
+  if (monthlyCash <= 0) return 0;
+
+  // EF Coverage: 0–40 pts
+  const efScore = efTarget > 0 ? Math.min(40, (efCurrent / efTarget) * 40) : 0;
+
+  // Debt Burden: 0–40 pts (interest as % of income drives penalty)
+  const interestRatio = autoInterest / income;
+  const debtScore = totalDebt === 0 ? 40 : Math.max(0, 40 - interestRatio * 400);
+
+  // Surplus Quality: 0–20 pts (spare >= 20% of income = full score)
+  const surplusScore = Math.min(20, (monthlyCash / income) * 100);
+
+  return Math.round(Math.min(100, Math.max(0, efScore + debtScore + surplusScore)));
+}
+
+// ---- Stability Meter ----
+function StabilityMeter({ score }: { score: number }) {
+  const barColor = score >= 70 ? COLORS.green : score >= 40 ? COLORS.yellow : COLORS.red;
+  return (
+    <View
+      style={{
+        backgroundColor: COLORS.card,
+        borderRadius: RADIUS.lg,
+        borderWidth: 1,
+        borderColor: COLORS.cardBorder,
+        padding: SPACING.lg,
+        marginBottom: SPACING.md,
+      }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: SPACING.sm }}>
+        <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '700' }}>
+          Financial Stability
+        </Text>
+        <Text style={{ color: barColor, fontSize: FONT_SIZE.lg, fontWeight: '800' }}>
+          {score}
+          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, fontWeight: '400' }}> / 100</Text>
+        </Text>
+      </View>
+      <View style={{ height: 6, backgroundColor: COLORS.inputBg, borderRadius: 3, overflow: 'hidden' }}>
+        <View
+          style={{
+            width: `${score}%`,
+            height: '100%',
+            backgroundColor: barColor,
+            borderRadius: 3,
+          }}
+        />
+      </View>
+      <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.xs, marginTop: SPACING.sm, lineHeight: 16 }}>
+        A directional indicator based on your emergency fund coverage, debt load, and monthly surplus.
+      </Text>
+    </View>
+  );
+}
+
+// ---- Timeline row ----
+function TimelineRow({
+  label,
+  value,
+  status,
+  isLast,
+}: {
+  label: string;
+  value: string;
+  status: 'complete' | 'active' | 'upcoming';
+  isLast?: boolean;
+}) {
+  const dotColor =
+    status === 'complete' ? COLORS.green : status === 'active' ? COLORS.text : COLORS.tabBarInactive;
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: COLORS.separator,
+      }}
+    >
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: dotColor,
+          marginRight: SPACING.md,
+        }}
+      />
+      <Text style={{ flex: 1, color: status === 'upcoming' ? COLORS.textMuted : COLORS.text, fontSize: FONT_SIZE.base }}>
+        {label}
+      </Text>
+      <Text
+        style={{
+          color: status === 'complete' ? COLORS.green : status === 'active' ? COLORS.text : COLORS.textDim,
+          fontSize: FONT_SIZE.sm,
+          fontWeight: status === 'active' ? '700' : '400',
+        }}
+      >
+        {status === 'complete' ? 'Complete ✓' : value}
+      </Text>
+    </View>
+  );
+}
 
 // ---- Learn accordion ----
 type LearnId = 'debts' | 'budget' | 'efund' | 'nextAction' | 'difference' | 'noTransactions';
@@ -31,7 +163,7 @@ const learnItems: { id: LearnId; title: string; body: string }[] = [
   {
     id: 'budget',
     title: 'Why does SAVR need my Budget?',
-    body: 'Your Budget tab calculates your spare per month: Income − Expenses = Spare.\n\nThat spare drives your emergency-fund timeline, your debt-free timeline, and the monthly Next Action.\n\nInclude minimum payments for all low-APR debts as normal expenses. Do NOT include minimums for high-APR debts on the Plan tab — SAVR auto-estimates those.',
+    body: 'Your Budget tab calculates your spare per month: Income − Expenses = Spare.\n\nThat spare drives your emergency-fund timeline, your debt-free timeline, and the monthly Next Move.\n\nInclude minimum payments for all low-APR debts as normal expenses. Do NOT include minimums for high-APR debts on the Plan tab — SAVR auto-estimates those.',
   },
   {
     id: 'efund',
@@ -40,8 +172,8 @@ const learnItems: { id: LearnId; title: string; body: string }[] = [
   },
   {
     id: 'nextAction',
-    title: 'How SAVR decides your Next Action',
-    body: 'Every month, SAVR looks at your spare money and chooses the smartest place for it to go.\n\nIt considers: your highest-APR debt and its balance, your EF progress vs. target, interest saved vs. potential market returns, and how each move changes your payoff timelines.\n\nThe Next Action card is not a guess — it\'s the math-driven best move based on your current numbers.',
+    title: 'How SAVR decides your Next Move',
+    body: 'Every month, SAVR looks at your spare money and chooses the smartest place for it to go.\n\nIt considers: your highest-APR debt and its balance, your EF progress vs. target, interest saved vs. potential market returns, and how each move changes your payoff timelines.\n\nThe Next Move card is not a guess — it\'s the math-driven best move based on your current numbers.',
   },
   {
     id: 'difference',
@@ -62,7 +194,6 @@ function LearnCard() {
     <Card title="Learn how SAVR works" subtitle="Quick explanations of the assumptions and logic behind your planner.">
       {learnItems.map((item, i) => {
         const isOpen = openId === item.id;
-        const isLast = i === learnItems.length - 1;
         return (
           <View
             key={item.id}
@@ -97,9 +228,12 @@ function LearnCard() {
   );
 }
 
-// ---- Main Home screen ----
+// ---- Main Dashboard ----
 export default function HomeScreen() {
   const router = useRouter();
+  const shareCardRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
+
   const { debtItems, emergencyFundCurrent, k401Acknowledged, noHighAprDebtAcknowledged, setNoHighAprDebtAcknowledged } = useStore();
   const { monthlyIncome, monthlyExpenses, sparePerMonth } = useBudgetStore();
 
@@ -125,21 +259,23 @@ export default function HomeScreen() {
   );
 
   const { phase, nextAction, timelines } = plan;
-  const { debtFreeMonthsExact, debtFreeMonths, efTarget, efCurrent, autoInterest, autoMinPrincipal } = timelines;
+  const { debtFreeMonthsExact, efTarget, efCurrent, autoInterest, autoMinPrincipal } = timelines;
 
   const hasDebt = totalDebt > 0;
   const minPayments = autoInterest + autoMinPrincipal;
-  const extraForDebt = Math.max(0, monthlyCash - minPayments);
+  const efCurr = Math.max(0, efCurrent);
 
+  // Starter EF calc
   const starterEfTarget = Math.max(0, 0.25 * expenses);
-  const starterEfRemaining = Math.max(0, starterEfTarget - efCurrent);
-  const starterEfContribution = Math.max(0, monthlyCash - minPayments);
+  const starterEfRemaining = Math.max(0, starterEfTarget - efCurr);
+  const starterEfContrib = Math.max(0, monthlyCash - minPayments);
   const starterEfMonthsExact =
-    starterEfContribution > 0 && starterEfRemaining > 0
-      ? starterEfRemaining / starterEfContribution
+    starterEfContrib > 0 && starterEfRemaining > 0
+      ? starterEfRemaining / starterEfContrib
       : Infinity;
 
-  const efRemaining = Math.max(0, efTarget - efCurrent);
+  // Full EF calc
+  const efRemaining = Math.max(0, efTarget - efCurr);
   const efMonthsExact = monthlyCash > 0 ? efRemaining / monthlyCash : Infinity;
 
   const highestAprDebt = useMemo(
@@ -150,11 +286,12 @@ export default function HomeScreen() {
     [debtItems],
   );
 
-  // Build action title + details for debt phase
+  // Build action title + details
   let actionTitle = nextAction.title;
   let actionDetails = nextAction.details;
 
   if (phase === 'debt' && hasDebt) {
+    const extraForDebt = Math.max(0, monthlyCash - minPayments);
     if (!highestAprDebt) {
       actionTitle = 'Pay high-APR debt';
       actionDetails = 'Enter at least one debt on the Plan tab so we can tell you exactly where to attack first.';
@@ -167,7 +304,7 @@ export default function HomeScreen() {
     }
   }
 
-  // Setup checklist gate
+  // Setup gate
   const budgetDone = income > 0;
   const efDebtDone =
     (debtItems || []).some((d) => num(d.balance) > 0) ||
@@ -175,10 +312,8 @@ export default function HomeScreen() {
     noHighAprDebtAcknowledged;
   const setupComplete = budgetDone && efDebtDone;
 
-  // Phase → tab navigation
-  const phaseNavLabel =
-    phase === 'invest' ? 'Open Invest' : phase === '401k' ? 'Open Invest' : 'Open Plan';
-
+  // Phase nav
+  const phaseNavLabel = phase === 'invest' || phase === '401k' ? 'Open Invest' : 'Open Plan';
   const phaseNavTo = phase === 'invest' || phase === '401k' ? '/(tabs)/invest' : '/(tabs)/plan';
 
   const phaseColor =
@@ -187,8 +322,53 @@ export default function HomeScreen() {
     phase === 'debt' ? COLORS.red :
     COLORS.text;
 
+  // Financial Stability score
+  const stabilityScore = computeStabilityScore({
+    monthlyCash,
+    income,
+    totalDebt,
+    efCurrent: efCurr,
+    efTarget,
+    autoInterest,
+  });
+
+  // Timeline statuses
+  const starterEfDone = starterEfRemaining <= 0;
+  const debtDone = totalDebt === 0;
+  const fullEfDone = efRemaining <= 0;
+
+  // Share data — only pass finite values
+  const shareStarterEf = hasDebt && !starterEfDone && Number.isFinite(starterEfMonthsExact) ? starterEfMonthsExact : undefined;
+  const shareDebtFree = hasDebt && Number.isFinite(debtFreeMonthsExact) && debtFreeMonthsExact > 0 ? debtFreeMonthsExact : undefined;
+  const shareFullEf = !fullEfDone && Number.isFinite(efMonthsExact) && efMonthsExact > 0 ? efMonthsExact : undefined;
+
+  const handleShare = async () => {
+    if (sharing) return;
+    try {
+      setSharing(true);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await sharePlan(shareCardRef);
+    } catch {
+      Alert.alert('Could not share', 'Build the app natively (expo run:ios) to enable sharing.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+      {/* Off-screen share card — rendered but hidden from view */}
+      <View style={{ position: 'absolute', top: -9999, left: 0 }} pointerEvents="none">
+        <SharePlanCard
+          ref={shareCardRef}
+          nextMove={actionTitle}
+          phase={phase}
+          starterEfMonths={shareStarterEf}
+          debtFreeMonths={shareDebtFree}
+          fullEfMonths={shareFullEf}
+        />
+      </View>
+
       {/* Header */}
       <View
         style={{
@@ -204,14 +384,9 @@ export default function HomeScreen() {
           <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xxl, fontWeight: '800', letterSpacing: -0.5 }}>
             SAVR
           </Text>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>
-            Dashboard
-          </Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>Dashboard</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push('/settings')}
-          style={{ padding: SPACING.xs }}
-        >
+        <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: SPACING.xs }}>
           <Ionicons name="settings-outline" size={22} color={COLORS.textMuted} />
         </TouchableOpacity>
       </View>
@@ -221,7 +396,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {!setupComplete ? (
-          /* ── Setup checklist: directs user before engine takes over ── */
+          /* ── Setup checklist ── */
           <>
             <Card title="Start here">
               <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 20, marginBottom: SPACING.lg }}>
@@ -251,7 +426,7 @@ export default function HomeScreen() {
                     Budget
                   </Text>
                   <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 18, marginTop: 2 }}>
-                    Enter your income and monthly expenses.
+                    Enter your income and fixed monthly expenses.
                   </Text>
                   {!budgetDone && (
                     <Button
@@ -265,7 +440,7 @@ export default function HomeScreen() {
 
               <View style={{ height: 1, backgroundColor: COLORS.separator, marginVertical: SPACING.md, marginLeft: 34 }} />
 
-              {/* Step 2 — EF & Debt (dims until step 1 is done) */}
+              {/* Step 2 — EF & Debt */}
               <View style={{ flexDirection: 'row', opacity: budgetDone ? 1 : 0.35 }}>
                 <View style={{
                   width: 26, height: 26, borderRadius: 13,
@@ -317,14 +492,13 @@ export default function HomeScreen() {
             <LearnCard />
           </>
         ) : (
-          /* ── Normal dashboard: budget is set up ── */
+          /* ── Full dashboard ── */
           <>
-            {/* Next Action Card */}
+            {/* Next Move Card */}
             <Card
-              title="Next Action"
+              title="Next Move"
               subtitle="Dynamic planner using your spare cash, debts, and emergency fund to decide what's most impactful this month."
             >
-              {/* Phase badge */}
               <View
                 style={{
                   alignSelf: 'flex-start',
@@ -343,7 +517,7 @@ export default function HomeScreen() {
               <Text style={{ color: phaseColor, fontSize: FONT_SIZE.lg, fontWeight: '800', marginBottom: SPACING.sm, letterSpacing: -0.3, lineHeight: 26 }}>
                 {actionTitle}
               </Text>
-              <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 20 }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.base, lineHeight: 22 }}>
                 {actionDetails}
               </Text>
 
@@ -359,6 +533,9 @@ export default function HomeScreen() {
                 style={{ marginTop: SPACING.md, alignSelf: 'flex-start' }}
               />
             </Card>
+
+            {/* Financial Stability Meter */}
+            <StabilityMeter score={stabilityScore} />
 
             {/* Snapshot Card */}
             <Card title="Snapshot" subtitle="Month-to-month picture based on your budget, debts, and emergency fund.">
@@ -379,7 +556,7 @@ export default function HomeScreen() {
               <MetricRow label="Total debt" value={hasDebt ? fmtCurrency(totalDebt) : '$0'} />
               <MetricRow
                 label="Emergency fund"
-                value={`${fmtCurrency(efCurrent)} / ${efTarget ? fmtCurrency(efTarget) : '—'}`}
+                value={`${fmtCurrency(efCurr)} / ${efTarget ? fmtCurrency(efTarget) : '—'}`}
               />
               {hasDebt && (
                 <>
@@ -396,62 +573,55 @@ export default function HomeScreen() {
               )}
             </Card>
 
-            {/* Timeline Card */}
-            <Card title="Timeline" subtitle="Rough timelines assuming today's spare per month.">
-              {phase === 'debt' && hasDebt ? (
-                <>
-                  <MetricRow label="Debt phase" value="Active" />
-                  <MetricRow
-                    label="Debt free in"
-                    value={
-                      Number.isFinite(debtFreeMonthsExact) && debtFreeMonthsExact > 0
-                        ? `~${debtFreeMonthsExact.toFixed(1)} months`
-                        : '—'
-                    }
-                    style={{ borderBottomWidth: 0 }}
-                  />
-                </>
-              ) : phase === 'ef' && hasDebt ? (
-                <>
-                  <MetricRow label="Debt phase" value="Not started (high-APR next)" />
-                  <MetricRow
-                    label="Starter EF reached in"
-                    value={
-                      Number.isFinite(starterEfMonthsExact) && starterEfMonthsExact > 0
-                        ? `~${starterEfMonthsExact.toFixed(1)} months`
-                        : starterEfRemaining <= 0
-                        ? '0 months'
-                        : '—'
-                    }
-                    style={{ borderBottomWidth: 0 }}
-                  />
-                </>
-              ) : phase === 'ef' ? (
-                <>
-                  <MetricRow label="Debt phase" value="Completed" />
-                  <MetricRow
-                    label="Target EF reached in"
-                    value={
-                      Number.isFinite(efMonthsExact) && efMonthsExact > 0
-                        ? `~${efMonthsExact.toFixed(1)} months`
-                        : efRemaining <= 0
-                        ? '0 months'
-                        : '—'
-                    }
-                    style={{ borderBottomWidth: 0 }}
-                  />
-                </>
-              ) : (
-                <>
-                  <MetricRow label="Debt phase" value={hasDebt ? 'Active' : 'Completed'} />
-                  <MetricRow
-                    label="EF phase"
-                    value={efRemaining <= 0 ? 'Completed' : 'In progress'}
-                    style={{ borderBottomWidth: 0 }}
-                  />
-                </>
+            {/* Timeline Card — expanded journey view */}
+            <Card title="Timeline" subtitle="Rough milestones assuming today's spare per month stays constant.">
+              {hasDebt && (
+                <TimelineRow
+                  label="Starter Emergency Fund"
+                  value={fmtMonths(starterEfMonthsExact)}
+                  status={starterEfDone ? 'complete' : phase === 'ef' && hasDebt ? 'active' : 'upcoming'}
+                />
               )}
+              {hasDebt && (
+                <TimelineRow
+                  label="Debt Freedom"
+                  value={fmtMonths(debtFreeMonthsExact)}
+                  status={debtDone ? 'complete' : phase === 'debt' ? 'active' : 'upcoming'}
+                />
+              )}
+              <TimelineRow
+                label="Full Emergency Fund"
+                value={fmtMonths(efMonthsExact)}
+                status={fullEfDone ? 'complete' : phase === 'ef' && !hasDebt ? 'active' : 'upcoming'}
+                isLast
+              />
             </Card>
+
+            {/* Share My Plan */}
+            <TouchableOpacity
+              onPress={handleShare}
+              disabled={sharing}
+              activeOpacity={0.75}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: SPACING.sm,
+                backgroundColor: COLORS.card,
+                borderRadius: RADIUS.lg,
+                borderWidth: 1,
+                borderColor: COLORS.cardBorder,
+                paddingVertical: 14,
+                paddingHorizontal: 22,
+                marginBottom: SPACING.md,
+                opacity: sharing ? 0.5 : 1,
+              }}
+            >
+              <Ionicons name="share-outline" size={18} color={COLORS.text} />
+              <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.base, fontWeight: '600' }}>
+                Share My Plan
+              </Text>
+            </TouchableOpacity>
 
             {/* Learn accordion */}
             <LearnCard />

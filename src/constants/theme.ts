@@ -3,7 +3,7 @@
 
 export const COLORS = {
   background: '#0a0a0a',
-  card: '#141414',
+  card: '#1F1F1F',
   cardBorder: 'rgba(255,255,255,0.07)',
   text: '#ffffff',
   textMuted: '#9ca3af',
@@ -40,8 +40,8 @@ export const FONT_SIZE = {
   xs: 11,
   sm: 13,
   base: 15,
-  md: 17,
+  md: 18,
   lg: 20,
   xl: 24,
-  xxl: 28,
+  xxl: 32,
 } as const;

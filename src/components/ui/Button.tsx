@@ -37,8 +37,8 @@ export function Button({ label, onPress, variant = 'primary', style, disabled, l
         {
           backgroundColor: v.bg,
           borderRadius: RADIUS.md,
-          paddingVertical: SPACING.sm + 2,
-          paddingHorizontal: SPACING.lg,
+          paddingVertical: 14,
+          paddingHorizontal: 22,
           borderWidth: v.border ? 1 : 0,
           borderColor: v.border,
           alignItems: 'center',

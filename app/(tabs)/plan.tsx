@@ -221,11 +221,10 @@ export default function PlanScreen() {
     noHighAprDebtAcknowledged,
     setNoHighAprDebtAcknowledged,
   } = useStore();
-  const { monthlyExpenses, sparePerMonth } = useBudgetStore();
+  const { monthlyExpenses } = useBudgetStore();
   const { updateDebtPeak, debtProgressPct } = useProgressStore();
 
   const expenses = monthlyExpenses();
-  const monthlyCash = sparePerMonth();
 
   const totalDebt = useMemo(
     () => (debtItems || []).reduce((sum, d) => sum + num(d.balance), 0),
@@ -301,10 +300,6 @@ export default function PlanScreen() {
               <MetricRow
                 label="Target fund (3× expenses)"
                 value={efTarget ? fmtCurrency(efTarget) : expenses ? fmtCurrency(efTarget) : '—'}
-              />
-              <MetricRow
-                label="Monthly cash to goals"
-                value={monthlyCash ? fmtCurrency(monthlyCash) : '—'}
                 style={{ borderBottomWidth: 0 }}
               />
             </View>
