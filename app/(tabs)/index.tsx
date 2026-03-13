@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import useStore from '../../src/stores/store';
 import useBudgetStore from '../../src/stores/budgetStore';
-import { computePlan, fmtCurrency, num } from '../../src/engine/planner';
+import { computePlan, fmtCurrency, num, simulateAvalancheConstantPayment } from '../../src/engine/planner';
 import { Card } from '../../src/components/ui/Card';
 import { MetricRow } from '../../src/components/ui/MetricRow';
 import { Button } from '../../src/components/ui/Button';
@@ -278,6 +278,23 @@ export default function HomeScreen() {
   const efRemaining = Math.max(0, efTarget - efCurr);
   const efMonthsExact = monthlyCash > 0 ? efRemaining / monthlyCash : Infinity;
 
+  // Debt-free timeline for the expanded Timeline card.
+  // The engine only runs the avalanche sim during the 'debt' phase, returning 0 in all
+  // other phases. We run it ourselves so the Timeline card always shows a forward-looking
+  // estimate whenever debt exists, regardless of the current phase.
+  const debtFreeMonthsForTimeline = useMemo(() => {
+    if (!hasDebt || monthlyCash <= 0) return 0;
+    if (phase === 'debt' && Number.isFinite(debtFreeMonthsExact) && debtFreeMonthsExact > 0) {
+      return debtFreeMonthsExact;
+    }
+    const { monthsExact } = simulateAvalancheConstantPayment(
+      (debtItems || []).map((d) => ({ name: String(d.name), apr: num(d.apr), balance: Math.max(0, num(d.balance)) })).filter((d) => d.balance > 0),
+      monthlyCash,
+      1200,
+    );
+    return monthsExact;
+  }, [hasDebt, monthlyCash, phase, debtFreeMonthsExact, debtItems]);
+
   const highestAprDebt = useMemo(
     () =>
       (debtItems || [])
@@ -337,10 +354,30 @@ export default function HomeScreen() {
   const debtDone = totalDebt === 0;
   const fullEfDone = efRemaining <= 0;
 
-  // Share data — only pass finite values
+  // Cumulative (additive from today) timeline.
+  // Each phase starts after the previous one ends, so values compound.
+  // Note: efMonthsExact uses full monthlyCash because after debt payoff the high-APR
+  // minimums are gone — the user's full spare is available for EF savings.
+  const starterEfOffset = !starterEfDone && Number.isFinite(starterEfMonthsExact) ? starterEfMonthsExact : 0;
+
+  const debtFreeFromToday: number = hasDebt
+    ? (Number.isFinite(debtFreeMonthsForTimeline) && debtFreeMonthsForTimeline > 0
+        ? starterEfOffset + debtFreeMonthsForTimeline
+        : Infinity)
+    : 0;
+
+  const fullEfFromToday: number = fullEfDone
+    ? 0
+    : (() => {
+        const afterDebt = hasDebt ? debtFreeFromToday : 0;
+        if (!Number.isFinite(afterDebt)) return Infinity;
+        return Number.isFinite(efMonthsExact) ? afterDebt + efMonthsExact : Infinity;
+      })();
+
+  // Share data — cumulative values
   const shareStarterEf = hasDebt && !starterEfDone && Number.isFinite(starterEfMonthsExact) ? starterEfMonthsExact : undefined;
-  const shareDebtFree = hasDebt && Number.isFinite(debtFreeMonthsExact) && debtFreeMonthsExact > 0 ? debtFreeMonthsExact : undefined;
-  const shareFullEf = !fullEfDone && Number.isFinite(efMonthsExact) && efMonthsExact > 0 ? efMonthsExact : undefined;
+  const shareDebtFree = hasDebt && Number.isFinite(debtFreeFromToday) && debtFreeFromToday > 0 ? debtFreeFromToday : undefined;
+  const shareFullEf = !fullEfDone && Number.isFinite(fullEfFromToday) && fullEfFromToday > 0 ? fullEfFromToday : undefined;
 
   const handleShare = async () => {
     if (sharing) return;
@@ -585,13 +622,13 @@ export default function HomeScreen() {
               {hasDebt && (
                 <TimelineRow
                   label="Debt Freedom"
-                  value={fmtMonths(debtFreeMonthsExact)}
+                  value={fmtMonths(debtFreeFromToday)}
                   status={debtDone ? 'complete' : phase === 'debt' ? 'active' : 'upcoming'}
                 />
               )}
               <TimelineRow
                 label="Full Emergency Fund"
-                value={fmtMonths(efMonthsExact)}
+                value={fmtMonths(fullEfFromToday)}
                 status={fullEfDone ? 'complete' : phase === 'ef' && !hasDebt ? 'active' : 'upcoming'}
                 isLast
               />
