@@ -7,13 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { DoneToolbar, KEYBOARD_DONE_ID } from '../../src/components/ui/DoneToolbar';
+import { DoneToolbar } from '../../src/components/ui/DoneToolbar';
 import useBudgetStore, { PAY_FREQS, PAY_FREQ_LABELS, PayFrequency, Expense } from '../../src/stores/budgetStore';
 import { fmtCurrency } from '../../src/engine/planner';
 import { Card } from '../../src/components/ui/Card';
@@ -84,7 +82,6 @@ function ExpenseRow({ expense, onUpdate, onRemove }: {
         placeholder="Expense name"
         placeholderTextColor={COLORS.textDim}
         returnKeyType="done"
-        inputAccessoryViewID={KEYBOARD_DONE_ID}
         style={{
           flex: 1.2,
           backgroundColor: COLORS.inputBg,
@@ -126,7 +123,6 @@ function ExpenseRow({ expense, onUpdate, onRemove }: {
           placeholder="0"
           placeholderTextColor={COLORS.textDim}
           keyboardType="decimal-pad"
-          inputAccessoryViewID={KEYBOARD_DONE_ID}
           style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.sm }}
         />
       </View>
@@ -161,11 +157,6 @@ export default function BudgetScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <DoneToolbar />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={88}
-      >
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
           <View>
@@ -182,7 +173,8 @@ export default function BudgetScreen() {
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl + SPACING.lg }}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
           {/* Primary Income Card */}
@@ -305,7 +297,6 @@ export default function BudgetScreen() {
             </Text>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

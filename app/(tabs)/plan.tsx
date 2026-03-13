@@ -7,13 +7,12 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
+  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { DoneToolbar, KEYBOARD_DONE_ID } from '../../src/components/ui/DoneToolbar';
+import { DoneToolbar } from '../../src/components/ui/DoneToolbar';
 import useStore, { DebtItem } from '../../src/stores/store';
 import useBudgetStore from '../../src/stores/budgetStore';
 import useProgressStore from '../../src/stores/progressStore';
@@ -41,147 +40,145 @@ function DebtRow({ debt, idx, onUpdate, onRemove }: {
   const mmin = monthlyMinimum(bal, apr);
 
   return (
-    <View
-      style={{
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.cardBorder,
-        padding: SPACING.md,
-        marginBottom: SPACING.sm,
-      }}
-    >
-      {/* Header row: name + remove */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm }}>
+    <View style={debtRowStyles.card}>
+      {/* Name row */}
+      <View style={debtRowStyles.row}>
+        <Text style={debtRowStyles.label}>Name</Text>
         <TextInput
           value={nameText}
           onChangeText={setNameText}
           onBlur={() => onUpdate({ name: nameText })}
-          placeholder="Card name"
+          placeholder="Card / loan name"
           placeholderTextColor={COLORS.textDim}
           returnKeyType="done"
-          inputAccessoryViewID={KEYBOARD_DONE_ID}
-          style={{
-            flex: 1,
-            backgroundColor: COLORS.inputBg,
-            borderRadius: RADIUS.sm,
-            borderWidth: 1,
-            borderColor: COLORS.inputBorder,
-            color: COLORS.text,
-            fontSize: FONT_SIZE.sm,
-            fontWeight: '600',
-            paddingHorizontal: SPACING.sm,
-            paddingVertical: SPACING.xs,
-            height: 38,
-            marginRight: SPACING.sm,
-          }}
+          style={debtRowStyles.input}
         />
-        <TouchableOpacity onPress={onRemove} activeOpacity={0.7} style={{ padding: SPACING.xs }}>
-          <Ionicons name="trash-outline" size={18} color={COLORS.red} />
+        <TouchableOpacity onPress={onRemove} activeOpacity={0.7} style={debtRowStyles.trash}>
+          <Ionicons name="trash-outline" size={15} color={COLORS.red} />
         </TouchableOpacity>
       </View>
 
-      {/* Balance + APR row */}
-      <View style={{ flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.sm }}>
-        {/* Balance */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginBottom: 4 }}>Balance</Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: COLORS.inputBg,
-              borderRadius: RADIUS.sm,
-              borderWidth: 1,
-              borderColor: COLORS.inputBorder,
-              paddingHorizontal: SPACING.sm,
-              height: 40,
-            }}
-          >
-            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginRight: 2 }}>$</Text>
-            <TextInput
-              value={balanceText}
-              onChangeText={(t) => setBalanceText(t.replace(/[^0-9.]/g, ''))}
-              onBlur={() => {
-                const n = parseFloat(balanceText);
-                onUpdate({ balance: Number.isFinite(n) ? n : 0 });
-              }}
-              placeholder="0"
-              placeholderTextColor={COLORS.textDim}
-              keyboardType="decimal-pad"
-              inputAccessoryViewID={KEYBOARD_DONE_ID}
-              style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.sm }}
-            />
-          </View>
-        </View>
-
-        {/* APR */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginBottom: 4 }}>APR %</Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: COLORS.inputBg,
-              borderRadius: RADIUS.sm,
-              borderWidth: 1,
-              borderColor: COLORS.inputBorder,
-              paddingHorizontal: SPACING.sm,
-              height: 40,
-            }}
-          >
-            <TextInput
-              value={aprText}
-              onChangeText={(t) => setAprText(t.replace(/[^0-9.]/g, ''))}
-              onBlur={() => {
-                const n = parseFloat(aprText);
-                onUpdate({ apr: Number.isFinite(n) ? n : 0 });
-              }}
-              placeholder="0"
-              placeholderTextColor={COLORS.textDim}
-              keyboardType="decimal-pad"
-              inputAccessoryViewID={KEYBOARD_DONE_ID}
-              style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.sm }}
-            />
-            <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>%</Text>
-          </View>
-        </View>
+      {/* Balance row */}
+      <View style={[debtRowStyles.row, debtRowStyles.separator]}>
+        <Text style={debtRowStyles.label}>Balance</Text>
+        <Text style={debtRowStyles.prefix}>$</Text>
+        <TextInput
+          value={balanceText}
+          onChangeText={(t) => setBalanceText(t.replace(/[^0-9.]/g, ''))}
+          onBlur={() => {
+            const n = parseFloat(balanceText);
+            onUpdate({ balance: Number.isFinite(n) ? n : 0 });
+          }}
+          placeholder="0"
+          placeholderTextColor={COLORS.textDim}
+          keyboardType="decimal-pad"
+          style={[debtRowStyles.input, { textAlign: 'right' }]}
+        />
       </View>
 
-      {/* Auto-calculated stats */}
+      {/* APR row */}
+      <View style={[debtRowStyles.row, debtRowStyles.separator, !bal && debtRowStyles.lastRow]}>
+        <Text style={debtRowStyles.label}>APR</Text>
+        <TextInput
+          value={aprText}
+          onChangeText={(t) => setAprText(t.replace(/[^0-9.]/g, ''))}
+          onBlur={() => {
+            const n = parseFloat(aprText);
+            onUpdate({ apr: Number.isFinite(n) ? n : 0 });
+          }}
+          placeholder="0"
+          placeholderTextColor={COLORS.textDim}
+          keyboardType="decimal-pad"
+          style={[debtRowStyles.input, { textAlign: 'right' }]}
+        />
+        <Text style={debtRowStyles.suffix}>%</Text>
+      </View>
+
+      {/* Auto stats */}
       {bal > 0 && (
-        <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: COLORS.inputBg,
-              borderRadius: RADIUS.sm,
-              padding: SPACING.sm,
-            }}
-          >
-            <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.xs }}>Monthly interest</Text>
-            <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: '600', marginTop: 2 }}>
-              {fmtCurrency(mi)} / mo
-            </Text>
+        <View style={debtRowStyles.statsRow}>
+          <View style={debtRowStyles.stat}>
+            <Text style={debtRowStyles.statLabel}>Interest / mo</Text>
+            <Text style={debtRowStyles.statValue}>{fmtCurrency(mi)}</Text>
           </View>
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: COLORS.inputBg,
-              borderRadius: RADIUS.sm,
-              padding: SPACING.sm,
-            }}
-          >
-            <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.xs }}>Est. minimum</Text>
-            <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: '600', marginTop: 2 }}>
-              {fmtCurrency(mmin)} / mo
-            </Text>
+          <View style={[debtRowStyles.stat, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: COLORS.separator }]}>
+            <Text style={debtRowStyles.statLabel}>Est. minimum</Text>
+            <Text style={debtRowStyles.statValue}>{fmtCurrency(mmin)}</Text>
           </View>
         </View>
       )}
     </View>
   );
 }
+
+const debtRowStyles = StyleSheet.create({
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    marginBottom: SPACING.sm,
+    overflow: 'hidden',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    height: 46,
+  },
+  separator: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+  },
+  lastRow: {
+    // no extra style needed; used to conditionally skip bottom separator
+  },
+  label: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.sm,
+    width: 64,
+  },
+  prefix: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.sm,
+    marginRight: 2,
+  },
+  suffix: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.sm,
+    marginLeft: 2,
+  },
+  input: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: FONT_SIZE.sm,
+  },
+  trash: {
+    marginLeft: SPACING.sm,
+    padding: 4,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.separator,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  stat: {
+    flex: 1,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  statLabel: {
+    color: COLORS.textDim,
+    fontSize: FONT_SIZE.xs,
+  },
+  statValue: {
+    color: COLORS.text,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+});
 
 // ---- Progress bar ----
 function ProgressBar({ pct }: { pct: number }) {
@@ -266,11 +263,6 @@ export default function PlanScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <DoneToolbar />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={88}
-      >
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
           <View>
@@ -287,7 +279,8 @@ export default function PlanScreen() {
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl + SPACING.lg }}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
           {/* Emergency Fund Card */}
@@ -422,7 +415,6 @@ export default function PlanScreen() {
             </Card>
           ) : null}
         </ScrollView>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

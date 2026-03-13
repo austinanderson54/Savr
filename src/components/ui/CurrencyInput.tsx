@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TextInput, Text, View, ViewStyle, TextStyle } from 'react-native';
 import { COLORS, RADIUS, SPACING, FONT_SIZE } from '../../constants/theme';
-import { KEYBOARD_DONE_ID } from './DoneToolbar';
 
 interface CurrencyInputProps {
   label?: string;
@@ -93,7 +92,6 @@ export function CurrencyInput({
           placeholder={placeholder}
           placeholderTextColor={COLORS.textDim}
           keyboardType="decimal-pad"
-          inputAccessoryViewID={KEYBOARD_DONE_ID}
           style={[
             {
               flex: 1,
@@ -158,7 +156,6 @@ export function PercentInput({ label, value, onChange, placeholder = '0', style 
           placeholder={placeholder}
           placeholderTextColor={COLORS.textDim}
           keyboardType="decimal-pad"
-          inputAccessoryViewID={KEYBOARD_DONE_ID}
           style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.base }}
         />
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.base }}>%</Text>

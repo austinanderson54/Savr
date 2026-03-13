@@ -7,12 +7,10 @@ import {
   Switch,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { DoneToolbar, KEYBOARD_DONE_ID } from '../../src/components/ui/DoneToolbar';
+import { DoneToolbar } from '../../src/components/ui/DoneToolbar';
 import { calcSeries, calcTotals } from '../../src/engine/calculators';
 import { fmtCurrency, fmtCompact } from '../../src/engine/planner';
 import { Card } from '../../src/components/ui/Card';
@@ -56,7 +54,6 @@ function YearsInput({ value, onChange }: { value: number; onChange: (n: number) 
           placeholder="25"
           placeholderTextColor={COLORS.textDim}
           keyboardType="number-pad"
-          inputAccessoryViewID={KEYBOARD_DONE_ID}
           style={{ flex: 1, color: COLORS.text, fontSize: FONT_SIZE.base }}
         />
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>yrs</Text>
@@ -98,11 +95,6 @@ export default function ToolsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <DoneToolbar />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={88}
-      >
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm }}>
           <View>
@@ -121,7 +113,8 @@ export default function ToolsScreen() {
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl + SPACING.lg }}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
           {/* Inputs */}
@@ -229,7 +222,6 @@ export default function ToolsScreen() {
             For illustrative purposes only. Assumes constant returns — actual returns vary. Not financial advice.
           </Text>
         </ScrollView>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

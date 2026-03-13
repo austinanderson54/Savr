@@ -1,53 +1,81 @@
 // src/components/ui/DoneToolbar.tsx
-// Renders a styled "Done" toolbar above the iOS keyboard for numeric inputs.
-// Decimal-pad and number-pad keyboards have no built-in dismiss button —
-// this provides one and also styles the accessory area to match the dark theme
-// (avoiding the unstyled black/empty bar).
+// Floating "Done" bar above the keyboard — replaces InputAccessoryView.
 //
-// Usage:
-//   1. Render <DoneToolbar /> once in your screen (e.g. inside SafeAreaView).
-//   2. Add inputAccessoryViewID={KEYBOARD_DONE_ID} to each numeric TextInput.
-//   Does nothing on Android.
+// InputAccessoryView is unreliable in Expo managed workflow. This component
+// instead listens to keyboard events and renders an absolutely-positioned
+// toolbar at the exact top edge of the keyboard. It works on any screen where
+// it's rendered as a direct child of SafeAreaView (absolute positioning is
+// relative to the SafeAreaView frame = full screen, so bottom: kbHeight lands
+// exactly at the keyboard's top edge).
+//
+// Usage: render <DoneToolbar /> inside your SafeAreaView. No inputAccessoryViewID
+// needed on TextInputs.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  InputAccessoryView,
   View,
   Text,
   TouchableOpacity,
   Keyboard,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { COLORS, SPACING, FONT_SIZE } from '../../constants/theme';
 
-export const KEYBOARD_DONE_ID = 'savr-keyboard-done';
-
 export function DoneToolbar() {
-  if (Platform.OS !== 'ios') return null;
+  const [kbHeight, setKbHeight] = useState(0);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKbHeight(e.endCoordinates.height);
+      setVisible(true);
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
+      setVisible(false);
+    });
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  if (!visible || Platform.OS !== 'ios') return null;
+
   return (
-    <InputAccessoryView nativeID={KEYBOARD_DONE_ID}>
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          paddingHorizontal: SPACING.lg,
-          paddingVertical: SPACING.sm,
-          backgroundColor: '#1c1c1e',
-          borderTopWidth: 1,
-          borderTopColor: COLORS.separator,
-        }}
+    <View style={[styles.bar, { bottom: kbHeight }]}>
+      <TouchableOpacity
+        onPress={() => Keyboard.dismiss()}
+        activeOpacity={0.6}
+        hitSlop={{ top: 10, bottom: 10, left: 20, right: 10 }}
       >
-        <TouchableOpacity
-          onPress={() => Keyboard.dismiss()}
-          activeOpacity={0.6}
-          hitSlop={{ top: 8, bottom: 8, left: 16, right: 8 }}
-        >
-          <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.base, fontWeight: '600' }}>
-            Done
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </InputAccessoryView>
+        <Text style={styles.label}>Done</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  bar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    backgroundColor: '#1c1c1e',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.15)',
+    zIndex: 9999,
+  },
+  label: {
+    color: COLORS.text,
+    fontSize: FONT_SIZE.base,
+    fontWeight: '600',
+  },
+});
