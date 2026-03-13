@@ -212,131 +212,183 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl + SPACING.lg }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Next Action Card */}
-        <Card
-          title="Next Action"
-          subtitle="Dynamic planner using your spare cash, debts, and emergency fund to decide what's most impactful this month."
-        >
-          {/* Phase badge */}
-          <View
-            style={{
-              alignSelf: 'flex-start',
-              backgroundColor: COLORS.pillBg,
-              borderRadius: 100,
-              paddingHorizontal: SPACING.sm,
-              paddingVertical: 3,
-              marginBottom: SPACING.sm,
-            }}
-          >
-            <Text style={{ color: phaseColor, fontSize: FONT_SIZE.xs, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {phase === 'ef' ? 'Emergency Fund' : phase === '401k' ? '401(k)' : phase === 'invest' ? 'Invest' : 'Debt'}
-            </Text>
-          </View>
-
-          <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '700', marginBottom: SPACING.sm }}>
-            {actionTitle}
-          </Text>
-          <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 20 }}>
-            {actionDetails}
-          </Text>
-
-          {phase === 'debt' && hasDebt && (
-            <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.xs, lineHeight: 17, marginTop: SPACING.sm }}>
-              Model assumes issuer-like minimums (interest + ~1% of balance) and treats freed-up interest as extra principal on your highest-APR debt.
-            </Text>
-          )}
-
-          <Button
-            label={phaseNavLabel}
-            onPress={() => router.push(phaseNavTo as any)}
-            style={{ marginTop: SPACING.md, alignSelf: 'flex-start' }}
-          />
-        </Card>
-
-        {/* Snapshot Card */}
-        <Card title="Snapshot" subtitle="Month-to-month picture based on your budget, debts, and emergency fund.">
-          <MetricRow label="Monthly income" value={income ? fmtCurrency(income) : '—'} />
-          <MetricRow label="Monthly expenses" value={expenses ? fmtCurrency(expenses) : '—'} />
-          <MetricRow
-            label="Spare per month"
-            value={monthlyCash ? fmtCurrency(monthlyCash) : '—'}
-            valueColor={monthlyCash < 0 ? COLORS.red : COLORS.green}
-          />
-          <MetricRow label="Total debt" value={hasDebt ? fmtCurrency(totalDebt) : '$0'} />
-          <MetricRow
-            label="Emergency fund"
-            value={`${fmtCurrency(efCurrent)} / ${efTarget ? fmtCurrency(efTarget) : '—'}`}
-          />
-          <MetricRow
-            label="Monthly interest on debts"
-            value={autoInterest ? fmtCurrency(autoInterest) : '—'}
-          />
-          <MetricRow
-            label="Required principal (mins above interest)"
-            value={autoMinPrincipal ? fmtCurrency(autoMinPrincipal) : '—'}
-            style={{ borderBottomWidth: 0 }}
-          />
-        </Card>
-
-        {/* Timeline Card */}
-        <Card title="Timeline" subtitle="Rough timelines assuming today's spare per month.">
-          {phase === 'debt' && hasDebt ? (
-            <>
-              <MetricRow label="Debt phase" value="Active" />
-              <MetricRow
-                label="Debt free in"
-                value={
-                  Number.isFinite(debtFreeMonthsExact) && debtFreeMonthsExact > 0
-                    ? `~${debtFreeMonthsExact.toFixed(1)} months`
-                    : '—'
-                }
-                style={{ borderBottomWidth: 0 }}
+        {income === 0 ? (
+          /* ── Empty state: user hasn't set up budget yet ── */
+          <>
+            <Card title="Start here">
+              <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 20, marginBottom: SPACING.lg }}>
+                Your dashboard and plan are generated automatically. Set up three things and everything updates in real time:
+              </Text>
+              {[
+                { n: '1', label: 'Budget', body: 'Enter your income and monthly expenses.' },
+                { n: '2', label: 'EF & Debt', body: 'Add any debts above ~10% APR and your emergency fund balance.' },
+                { n: '3', label: 'Dashboard', body: 'Your Next Action, timelines, and snapshot appear here.' },
+              ].map(({ n, label, body }) => (
+                <View key={n} style={{ flexDirection: 'row', marginBottom: SPACING.md }}>
+                  <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: COLORS.pillBg, alignItems: 'center', justifyContent: 'center', marginRight: SPACING.sm, marginTop: 1 }}>
+                    <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.xs, fontWeight: '700' }}>{n}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: '700' }}>{label}</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 18, marginTop: 2 }}>{body}</Text>
+                  </View>
+                </View>
+              ))}
+              <Button
+                label="Open Budget →"
+                onPress={() => router.push('/(tabs)/budget' as any)}
+                style={{ marginTop: SPACING.xs }}
               />
-            </>
-          ) : phase === 'ef' && hasDebt ? (
-            <>
-              <MetricRow label="Debt phase" value="Not started (high-APR next)" />
-              <MetricRow
-                label="Starter EF reached in"
-                value={
-                  Number.isFinite(starterEfMonthsExact) && starterEfMonthsExact > 0
-                    ? `~${starterEfMonthsExact.toFixed(1)} months`
-                    : starterEfRemaining <= 0
-                    ? '0 months'
-                    : '—'
-                }
-                style={{ borderBottomWidth: 0 }}
+              <Button
+                label="Open EF & Debt →"
+                onPress={() => router.push('/(tabs)/plan' as any)}
+                variant="outline"
+                style={{ marginTop: SPACING.sm }}
               />
-            </>
-          ) : phase === 'ef' ? (
-            <>
-              <MetricRow label="Debt phase" value="Completed" />
-              <MetricRow
-                label="Target EF reached in"
-                value={
-                  Number.isFinite(efMonthsExact) && efMonthsExact > 0
-                    ? `~${efMonthsExact.toFixed(1)} months`
-                    : efRemaining <= 0
-                    ? '0 months'
-                    : '—'
-                }
-                style={{ borderBottomWidth: 0 }}
-              />
-            </>
-          ) : (
-            <>
-              <MetricRow label="Debt phase" value={hasDebt ? 'Active' : 'Completed'} />
-              <MetricRow
-                label="EF phase"
-                value={efRemaining <= 0 ? 'Completed' : 'In progress'}
-                style={{ borderBottomWidth: 0 }}
-              />
-            </>
-          )}
-        </Card>
+            </Card>
+            <LearnCard />
+          </>
+        ) : (
+          /* ── Normal dashboard: budget is set up ── */
+          <>
+            {/* Next Action Card */}
+            <Card
+              title="Next Action"
+              subtitle="Dynamic planner using your spare cash, debts, and emergency fund to decide what's most impactful this month."
+            >
+              {/* Phase badge */}
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: COLORS.pillBg,
+                  borderRadius: 100,
+                  paddingHorizontal: SPACING.sm,
+                  paddingVertical: 3,
+                  marginBottom: SPACING.sm,
+                }}
+              >
+                <Text style={{ color: phaseColor, fontSize: FONT_SIZE.xs, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {phase === 'ef' ? 'Emergency Fund' : phase === '401k' ? '401(k)' : phase === 'invest' ? 'Invest' : 'Debt'}
+                </Text>
+              </View>
 
-        {/* Learn accordion */}
-        <LearnCard />
+              <Text style={{ color: phaseColor, fontSize: FONT_SIZE.lg, fontWeight: '800', marginBottom: SPACING.sm, letterSpacing: -0.3, lineHeight: 26 }}>
+                {actionTitle}
+              </Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 20 }}>
+                {actionDetails}
+              </Text>
+
+              {phase === 'debt' && hasDebt && (
+                <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.xs, lineHeight: 17, marginTop: SPACING.sm }}>
+                  Model assumes issuer-like minimums (interest + ~1% of balance) and treats freed-up interest as extra principal on your highest-APR debt.
+                </Text>
+              )}
+
+              <Button
+                label={phaseNavLabel}
+                onPress={() => router.push(phaseNavTo as any)}
+                style={{ marginTop: SPACING.md, alignSelf: 'flex-start' }}
+              />
+            </Card>
+
+            {/* Snapshot Card */}
+            <Card title="Snapshot" subtitle="Month-to-month picture based on your budget, debts, and emergency fund.">
+              <MetricRow label="Monthly income" value={income ? fmtCurrency(income) : '—'} />
+              <MetricRow label="Monthly expenses" value={expenses ? fmtCurrency(expenses) : '—'} />
+              <MetricRow
+                label="Spare per month"
+                value={monthlyCash ? fmtCurrency(monthlyCash) : '—'}
+                valueColor={monthlyCash < 0 ? COLORS.red : COLORS.text}
+              />
+              {hasDebt && (
+                <MetricRow
+                  label="After high-APR minimums"
+                  value={fmtCurrency(monthlyCash - minPayments)}
+                  valueColor={monthlyCash - minPayments < 0 ? COLORS.red : COLORS.green}
+                />
+              )}
+              <MetricRow label="Total debt" value={hasDebt ? fmtCurrency(totalDebt) : '$0'} />
+              <MetricRow
+                label="Emergency fund"
+                value={`${fmtCurrency(efCurrent)} / ${efTarget ? fmtCurrency(efTarget) : '—'}`}
+              />
+              {hasDebt && (
+                <>
+                  <MetricRow
+                    label="Monthly interest on debts"
+                    value={autoInterest ? fmtCurrency(autoInterest) : '—'}
+                  />
+                  <MetricRow
+                    label="Required principal (est. mins above interest)"
+                    value={autoMinPrincipal ? fmtCurrency(autoMinPrincipal) : '—'}
+                    style={{ borderBottomWidth: 0 }}
+                  />
+                </>
+              )}
+            </Card>
+
+            {/* Timeline Card */}
+            <Card title="Timeline" subtitle="Rough timelines assuming today's spare per month.">
+              {phase === 'debt' && hasDebt ? (
+                <>
+                  <MetricRow label="Debt phase" value="Active" />
+                  <MetricRow
+                    label="Debt free in"
+                    value={
+                      Number.isFinite(debtFreeMonthsExact) && debtFreeMonthsExact > 0
+                        ? `~${debtFreeMonthsExact.toFixed(1)} months`
+                        : '—'
+                    }
+                    style={{ borderBottomWidth: 0 }}
+                  />
+                </>
+              ) : phase === 'ef' && hasDebt ? (
+                <>
+                  <MetricRow label="Debt phase" value="Not started (high-APR next)" />
+                  <MetricRow
+                    label="Starter EF reached in"
+                    value={
+                      Number.isFinite(starterEfMonthsExact) && starterEfMonthsExact > 0
+                        ? `~${starterEfMonthsExact.toFixed(1)} months`
+                        : starterEfRemaining <= 0
+                        ? '0 months'
+                        : '—'
+                    }
+                    style={{ borderBottomWidth: 0 }}
+                  />
+                </>
+              ) : phase === 'ef' ? (
+                <>
+                  <MetricRow label="Debt phase" value="Completed" />
+                  <MetricRow
+                    label="Target EF reached in"
+                    value={
+                      Number.isFinite(efMonthsExact) && efMonthsExact > 0
+                        ? `~${efMonthsExact.toFixed(1)} months`
+                        : efRemaining <= 0
+                        ? '0 months'
+                        : '—'
+                    }
+                    style={{ borderBottomWidth: 0 }}
+                  />
+                </>
+              ) : (
+                <>
+                  <MetricRow label="Debt phase" value={hasDebt ? 'Active' : 'Completed'} />
+                  <MetricRow
+                    label="EF phase"
+                    value={efRemaining <= 0 ? 'Completed' : 'In progress'}
+                    style={{ borderBottomWidth: 0 }}
+                  />
+                </>
+              )}
+            </Card>
+
+            {/* Learn accordion */}
+            <LearnCard />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

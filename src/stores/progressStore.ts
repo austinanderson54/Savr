@@ -1,29 +1,32 @@
 // src/stores/progressStore.ts
-// Debt & EF milestone tracking — ported from web progressStore.ts.
+// Debt & EF milestone tracking.
+//
+// debtPeakTotal = the highest total debt ever recorded.
+// Progress is automatically computed when balances drop below the peak —
+// no manual rebaseline needed. Calling updateDebtPeak() on every debt
+// change ensures the peak only ever goes up.
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ProgressState = {
-  debtBaselineStartTotal: number;
-  debtBaselineStartDate: string | null;
-  debtBaselineActive: boolean;
+  debtPeakTotal: number;
   debtCompletedDate: string | null;
   efCompletedDate: string | null;
 
-  rebaselineDebt: (currentTotal?: number) => void;
+  // Call whenever totalDebt changes — updates peak if current total is higher
+  updateDebtPeak: (total: number) => void;
   markDebtCompleted: () => void;
   markEfCompleted: () => void;
   resetAllProgress: () => void;
 
+  // Returns 0–100. Pass current totalDebt.
   debtProgressPct: (currentTotal?: number) => number;
 };
 
 const initialState = {
-  debtBaselineStartTotal: 0,
-  debtBaselineStartDate: null as string | null,
-  debtBaselineActive: false,
+  debtPeakTotal: 0,
   debtCompletedDate: null as string | null,
   efCompletedDate: null as string | null,
 };
@@ -33,18 +36,13 @@ const useProgressStore = create<ProgressState>()(
     (set, get) => ({
       ...initialState,
 
-      rebaselineDebt: (currentTotal = 0) =>
-        set({
-          debtBaselineStartTotal: Number(currentTotal) || 0,
-          debtBaselineStartDate: new Date().toISOString(),
-          debtBaselineActive: (Number(currentTotal) || 0) > 0,
-        }),
+      updateDebtPeak: (total: number) =>
+        set((s) => ({ debtPeakTotal: Math.max(s.debtPeakTotal, Math.max(0, total)) })),
 
-      markDebtCompleted: () =>
-        set({
-          debtBaselineActive: false,
-          debtCompletedDate: new Date().toISOString(),
-        }),
+      markDebtCompleted: () => {
+        const { debtCompletedDate } = get();
+        if (!debtCompletedDate) set({ debtCompletedDate: new Date().toISOString() });
+      },
 
       markEfCompleted: () => {
         const { efCompletedDate } = get();
@@ -54,23 +52,20 @@ const useProgressStore = create<ProgressState>()(
       resetAllProgress: () => set({ ...initialState }),
 
       debtProgressPct: (currentTotal = 0) => {
-        const { debtBaselineStartTotal, debtBaselineActive, debtCompletedDate } = get();
-        const start = Number(debtBaselineStartTotal) || 0;
+        const { debtPeakTotal, debtCompletedDate } = get();
+        const peak = debtPeakTotal;
         const cur = Math.max(0, Number(currentTotal) || 0);
-        if (!start && cur === 0 && debtCompletedDate) return 100;
-        if (!debtBaselineActive || start <= 0) return 0;
-        const paid = Math.max(0, start - cur);
-        return Math.max(0, Math.min(100, (paid / start) * 100));
+        if (peak <= 0) return cur === 0 && debtCompletedDate ? 100 : 0;
+        if (cur <= 0) return 100;
+        return Math.max(0, Math.min(100, (1 - cur / peak) * 100));
       },
     }),
     {
-      name: 'savr-progress-v1',
-      version: 1,
+      name: 'savr-progress-v2',
+      version: 2,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
-        debtBaselineStartTotal: s.debtBaselineStartTotal,
-        debtBaselineStartDate: s.debtBaselineStartDate,
-        debtBaselineActive: s.debtBaselineActive,
+        debtPeakTotal: s.debtPeakTotal,
         debtCompletedDate: s.debtCompletedDate,
         efCompletedDate: s.efCompletedDate,
       }),

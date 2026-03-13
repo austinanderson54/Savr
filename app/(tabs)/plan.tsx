@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -218,7 +218,7 @@ export default function PlanScreen() {
     setEmergencyFundCurrent,
   } = useStore();
   const { monthlyExpenses, sparePerMonth } = useBudgetStore();
-  const { rebaselineDebt, debtProgressPct } = useProgressStore();
+  const { updateDebtPeak, debtProgressPct } = useProgressStore();
 
   const expenses = monthlyExpenses();
   const monthlyCash = sparePerMonth();
@@ -232,6 +232,12 @@ export default function PlanScreen() {
   const efCurrent = Math.max(0, emergencyFundCurrent);
   const efProgress = efTarget > 0 ? Math.min(100, (efCurrent / efTarget) * 100) : 0;
   const debtProgress = debtProgressPct(totalDebt);
+
+  // Auto-rebaseline: whenever totalDebt increases, record it as the new peak.
+  // Progress is then automatically shown as balances drop below that peak.
+  useEffect(() => {
+    if (totalDebt > 0) updateDebtPeak(totalDebt);
+  }, [totalDebt]);
 
   const handleAddDebt = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -248,21 +254,6 @@ export default function PlanScreen() {
         onPress: () => removeDebt(idx),
       },
     ]);
-  };
-
-  const handleResetProgress = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert(
-      'Reset debt progress',
-      'This will set your debt progress baseline to the current total and reset the start date.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          onPress: () => rebaselineDebt(totalDebt),
-        },
-      ],
-    );
   };
 
   return (
@@ -372,18 +363,17 @@ export default function PlanScreen() {
           </Card>
 
           {/* Debt Progress Card */}
-          {totalDebt > 0 || debtProgressPct(totalDebt) > 0 ? (
-            <Card title="Debt progress">
+          {debtProgress > 0 || totalDebt > 0 ? (
+            <Card title="Debt payoff progress">
               <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 18, marginBottom: SPACING.sm }}>
-                Track how much you've paid down relative to when you started. Reset your baseline if balances changed significantly.
+                Automatically tracks how much you've paid down since your highest recorded total.
               </Text>
               <ProgressBar pct={debtProgress} />
-              <Button
-                label="Reset debt baseline"
-                onPress={handleResetProgress}
-                variant="outline"
-                style={{ marginTop: SPACING.sm }}
-              />
+              <Text style={{ color: COLORS.textDim, fontSize: FONT_SIZE.xs, marginTop: SPACING.sm, lineHeight: 16 }}>
+                {debtProgress > 0
+                  ? `${debtProgress.toFixed(0)}% paid down from your recorded peak`
+                  : 'Progress will appear once a balance drops below its peak.'}
+              </Text>
             </Card>
           ) : null}
         </ScrollView>
